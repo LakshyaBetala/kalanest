@@ -1,0 +1,4 @@
+.vercel
+extract_mobile_frames.py
+public/_temp_jpg/
+*.mp4

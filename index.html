@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>Kalanest — Curated Home Decor & Luxury Interiors</title>
+  <meta name="description" content="Kalanest brings heritage craftsmanship to modern living. Curated home decor, artisanal furnishings, and timeless interior pieces." />
+  <meta name="theme-color" content="#16120e" />
+
+  <!-- Fonts — Cormorant Garamond for display, DM Sans for body -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════
+       LOADING SCREEN
+       ═══════════════════════════════════════ -->
+  <div id="loader" class="loader" role="status" aria-label="Loading experience">
+    <div class="loader__inner">
+      <span class="loader__brand-name">Kalanest</span>
+      <div class="loader__progress">
+        <div class="loader__bar-track">
+          <div class="loader__bar-fill" id="loaderBar"></div>
+        </div>
+        <div class="loader__meta">
+          <span class="loader__percent" id="loaderPercent">0%</span>
+          <span class="loader__status" id="loaderStatus">Preparing your experience</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       CINEMATIC SCROLL EXPERIENCE
+       ═══════════════════════════════════════ -->
+
+  <!-- Canvas (fixed behind everything) -->
+  <div id="canvasStage" class="canvas-stage">
+    <canvas id="frameCanvas" aria-hidden="true"></canvas>
+    <!-- Watermark masks -->
+    <div class="wm-mask wm-mask--br" aria-hidden="true"></div>
+    <div class="wm-mask wm-mask--bl" aria-hidden="true"></div>
+  </div>
+
+  <!-- Text overlays — home decor brand specific -->
+  <div id="textOverlays" class="text-overlays" aria-hidden="true">
+
+    <!-- Overlay 1: Brand introduction (frames 1–60) -->
+    <div class="text-overlay" data-start="0" data-peak="30" data-end="65">
+      <span class="text-overlay__eyebrow">Kalanest</span>
+      <h2 class="text-overlay__heading">Where every corner<br/>tells a story</h2>
+    </div>
+
+    <!-- Overlay 2: Philosophy (frames 70–140) -->
+    <div class="text-overlay" data-start="70" data-peak="105" data-end="145">
+      <h2 class="text-overlay__heading text-overlay__heading--sm">Handpicked treasures<br/>for spaces that speak</h2>
+    </div>
+
+    <!-- Overlay 3: Craft (frames 155–220) -->
+    <div class="text-overlay" data-start="155" data-peak="185" data-end="225">
+      <span class="text-overlay__eyebrow">Heritage Craft</span>
+      <h2 class="text-overlay__heading">Timeless pieces,<br/>modern living</h2>
+    </div>
+
+    <!-- Overlay 4: Spaces (frames 240–310) -->
+    <div class="text-overlay" data-start="240" data-peak="275" data-end="315">
+      <h2 class="text-overlay__heading text-overlay__heading--sm">Your home deserves<br/>more than furniture</h2>
+    </div>
+
+    <!-- Overlay 5: Vision (frames 340–400) -->
+    <div class="text-overlay" data-start="340" data-peak="370" data-end="405">
+      <span class="text-overlay__eyebrow">Curated Interiors</span>
+      <h2 class="text-overlay__heading">It deserves<br/>a soul</h2>
+    </div>
+
+    <!-- Overlay 6: Closing (frames 420–460) -->
+    <div class="text-overlay" data-start="420" data-peak="442" data-end="462">
+      <h2 class="text-overlay__heading text-overlay__heading--lg">Kalanest</h2>
+    </div>
+
+  </div>
+
+  <!-- Scroll spacer (creates scroll distance for frames) -->
+  <div id="scrollSpacer" class="scroll-spacer" aria-hidden="true"></div>
+
+  <!-- ═══════════════════════════════════════
+       WEBSITE CONTENT (only after all frames)
+       ═══════════════════════════════════════ -->
+  <main id="mainContent" class="main-content">
+
+    <!-- ── Manifesto ── -->
+    <section class="section section--manifesto" id="sectionManifesto">
+      <div class="section__container">
+        <div class="section__divider">
+          <svg class="section__ornament" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+            <path d="M12 2c0 5.5-1.5 8.5-10 10 8.5 1.5 10 4.5 10 10 0-5.5 1.5-8.5 10-10C13.5 10.5 12 7.5 12 2z"/>
+          </svg>
+        </div>
+        <div class="manifesto">
+          <span class="manifesto__eyebrow">Our Philosophy</span>
+          <h2 class="manifesto__heading">
+            We believe a home is not built with walls alone. It is shaped by the objects that inhabit it, the textures that greet your fingertips, the light that falls on brass and wood and stone.
+          </h2>
+          <p class="manifesto__body">
+            Kalanest curates home decor that carries the warmth of artisan hands. Each piece in our collection is chosen for its ability to transform a room into a living, breathing narrative of taste and heritage.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Collections ── -->
+    <section class="section section--collections" id="sectionCollections">
+      <div class="section__container">
+        <div class="collections__header">
+          <p class="collections__eyebrow">Collections</p>
+          <h2 class="collections__title">What we bring home</h2>
+        </div>
+        <div class="collections__grid">
+
+          <div class="collection-card">
+            <span class="collection-card__index">01</span>
+            <svg class="collection-card__icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M13 5h6"/>
+              <path d="M14 5v3.5c0 2-3.5 4-3.5 9S12.5 24 16 24s5.5-2.5 5.5-6.5S18 9.5 18 8.5V5"/>
+              <path d="M11 28h10"/>
+              <path d="M13 24.5c0 1.5-.5 2.5-2 3.5"/>
+              <path d="M19 24.5c0 1.5.5 2.5 2 3.5"/>
+            </svg>
+            <h3 class="collection-card__title">Sculptural Art</h3>
+            <p class="collection-card__desc">From bronze Ganesha idols to hand-carved figurines — statement pieces that anchor a room with presence and meaning.</p>
+            <span class="collection-card__line" aria-hidden="true"></span>
+          </div>
+
+          <div class="collection-card">
+            <span class="collection-card__index">02</span>
+            <svg class="collection-card__icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="16" cy="18" r="9"/>
+              <path d="M16 5v4"/>
+              <path d="M13.5 5h5"/>
+              <path d="M16 12v6l3.5 2.5"/>
+              <circle cx="16" cy="18" r="1" fill="currentColor" stroke="none"/>
+            </svg>
+            <h3 class="collection-card__title">Heritage Timepieces</h3>
+            <p class="collection-card__desc">Mechanical clocks, vintage compasses, and brass instruments — functional art that marks time with character.</p>
+            <span class="collection-card__line" aria-hidden="true"></span>
+          </div>
+
+          <div class="collection-card">
+            <span class="collection-card__index">03</span>
+            <svg class="collection-card__icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 28V14a10 10 0 0120 0v14"/>
+              <path d="M11 28V18a5 5 0 0110 0v10"/>
+              <path d="M6 28h20"/>
+              <circle cx="16" cy="14" r="1.5" fill="none"/>
+            </svg>
+            <h3 class="collection-card__title">Curated Interiors</h3>
+            <p class="collection-card__desc">Water features, ambient lighting, and ornamental furnishings — pieces that transform spaces into sanctuaries.</p>
+            <span class="collection-card__line" aria-hidden="true"></span>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Philosophy Quote ── -->
+    <section class="section section--philosophy" id="sectionPhilosophy">
+      <div class="section__container">
+        <div class="section__divider">
+          <svg class="section__ornament" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+            <path d="M12 2c0 5.5-1.5 8.5-10 10 8.5 1.5 10 4.5 10 10 0-5.5 1.5-8.5 10-10C13.5 10.5 12 7.5 12 2z"/>
+          </svg>
+        </div>
+        <div class="philosophy">
+          <span class="philosophy__mark" aria-hidden="true">&ldquo;</span>
+          <h2 class="philosophy__quote">A home filled with chosen things becomes a home filled with meaning</h2>
+          <span class="philosophy__attribution">The Kalanest Promise</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA ── -->
+    <section class="section section--cta" id="sectionCTA">
+      <div class="section__container">
+        <div class="cta-block">
+          <h2 class="cta-block__heading">Let us help you<br/>find the perfect piece</h2>
+          <p class="cta-block__sub">Every great space begins with a single, intentional choice. Explore our curated collections.</p>
+          <a href="mailto:hello@kalanest.com" class="cta-block__btn" id="ctaBtn">
+            <span>Explore Collections</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7 17L17 7M17 7H7M17 7V17"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer class="footer" id="footer">
+      <div class="section__container">
+        <div class="footer__inner">
+          <div class="footer__brand-block">
+            <span class="footer__brand">Kalanest</span>
+            <span class="footer__tagline">Heritage meets modern living</span>
+          </div>
+          <div class="footer__links">
+            <a href="#sectionManifesto" class="footer__link">About</a>
+            <a href="#sectionCollections" class="footer__link">Collections</a>
+            <a href="mailto:hello@kalanest.com" class="footer__link">Contact</a>
+          </div>
+          <span class="footer__copy">&copy; 2026 Kalanest. All rights reserved.</span>
+        </div>
+      </div>
+    </footer>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════
+       FLOATING UI
+       ═══════════════════════════════════════ -->
+
+  <!-- Navigation -->
+  <header id="nav" class="nav" role="banner">
+    <span class="nav__brand">Kalanest</span>
+    <span class="nav__tagline">Curated Home Decor</span>
+  </header>
+
+  <!-- Bottom progress -->
+  <div id="progressTrack" class="progress-track">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <!-- Scroll prompt -->
+  <div id="scrollPrompt" class="scroll-prompt">
+    <div class="scroll-prompt__line"></div>
+    <span class="scroll-prompt__text">Scroll to explore</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
