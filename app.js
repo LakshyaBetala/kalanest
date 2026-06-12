@@ -181,7 +181,7 @@
       if (this.ctx) return;
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.4;
+      this.master.gain.value = 0.8;
       this.master.connect(this.ctx.destination);
 
       /* Pre-generate reusable noise buffer (2 s) */
@@ -232,8 +232,8 @@
       const bp = c.createBiquadFilter(); bp.type = 'bandpass';
       bp.frequency.value = 800 + Math.random() * 600; bp.Q.value = 12;
       const g = c.createGain();
-      g.gain.setValueAtTime(0.07, now);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      g.gain.setValueAtTime(0.18, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
       src.connect(bp); bp.connect(g); g.connect(this.master);
       src.start(); src.stop(now + 0.07);
     },
@@ -243,15 +243,15 @@
       const c = this.ctx, now = c.currentTime;
       const o = c.createOscillator(); o.frequency.value = 1800 + Math.random() * 400; o.type = 'sine';
       const g = c.createGain();
-      g.gain.setValueAtTime(0.09, now);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+      g.gain.setValueAtTime(0.22, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
       o.connect(g); g.connect(this.master);
       o.start(); o.stop(now + 0.04);
       /* Secondary click for realism */
       const o2 = c.createOscillator(); o2.frequency.value = 3200;
       const g2 = c.createGain();
-      g2.gain.setValueAtTime(0.035, now + 0.008);
-      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      g2.gain.setValueAtTime(0.08, now + 0.008);
+      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
       o2.connect(g2); g2.connect(this.master);
       o2.start(now + 0.008); o2.stop(now + 0.04);
     },
@@ -262,8 +262,8 @@
       const freq = [523, 659, 784, 880][(Math.random() * 4) | 0]; /* C5-A5 */
       const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
       const g = c.createGain();
-      g.gain.setValueAtTime(0.035, now);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      g.gain.setValueAtTime(0.12, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
       o.connect(g); g.connect(this.master);
       o.start(); o.stop(now + 0.55);
     },
@@ -281,16 +281,16 @@
 
       /* Drone: warm room presence throughout the video */
       if (this.drone) {
-        this.drone.g.gain.setTargetAtTime(f < 462 ? 0.022 : 0, now, 0.4);
+        this.drone.g.gain.setTargetAtTime(f < 462 ? 0.08 : 0, now, 0.4);
       }
 
       /* Water zone: desktop frames ~260-420 (curated interiors / water features) */
       const inWater = f >= 260 && f <= 420;
       if (this.water) {
-        this.water.g.gain.setTargetAtTime(inWater ? 0.04 : 0, now, 0.6);
+        this.water.g.gain.setTargetAtTime(inWater ? 0.12 : 0, now, 0.6);
       }
       /* Random drips continue even when scrolling stops */
-      if (inWater && Math.random() < 0.008) this._drip();
+      if (inWater && Math.random() < 0.012) this._drip();
 
       if (!frameChanged) return;
       this.lastFrame = f;
@@ -309,14 +309,44 @@
 
     /* — Toggle on/off — */
     toggle() {
+      const soundBtn = document.getElementById('soundToggle');
       if (!this.enabled) {
-        this.init();
-        if (this.ctx.state === 'suspended') this.ctx.resume();
         this.enabled = true;
+        this.init();
+        
+        if (soundBtn) {
+          soundBtn.classList.add('is-on');
+          soundBtn.setAttribute('aria-label', 'Mute sound');
+        }
+
+        const runInitVolume = () => {
+          if (!this.enabled) return;
+          this.master.gain.setTargetAtTime(0.8, this.ctx.currentTime, 0.15);
+          this.update(Math.round(smoothFrame));
+          this._chime();
+        };
+
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume().then(runInitVolume);
+        } else {
+          runInitVolume();
+        }
       } else {
         this.enabled = false;
-        if (this.drone) this.drone.g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3);
-        if (this.water) this.water.g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3);
+        
+        if (soundBtn) {
+          soundBtn.classList.remove('is-on');
+          soundBtn.setAttribute('aria-label', 'Enable sound');
+        }
+
+        if (this.ctx) {
+          this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.15);
+          setTimeout(() => {
+            if (!this.enabled && this.ctx && this.ctx.state === 'running') {
+              this.ctx.suspend();
+            }
+          }, 200);
+        }
       }
     }
   };
@@ -448,8 +478,6 @@
       if (soundBtn) {
         soundBtn.addEventListener('click', () => {
           sound.toggle();
-          soundBtn.classList.toggle('is-on', sound.enabled);
-          soundBtn.setAttribute('aria-label', sound.enabled ? 'Mute sound' : 'Enable sound');
         });
       }
     }, 350);
