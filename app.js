@@ -55,6 +55,8 @@
   let hasScrolled   = false;
   let rafId         = null;
   let lastScrollY   = -1;
+  let targetFrame   = 0;
+  let smoothFrame   = 0;
   let canvasW       = 0;
   let canvasH       = 0;
   let videoScrollDist = 0;
@@ -163,44 +165,57 @@
     }
   }
 
-  /* ── Main scroll loop (rAF-throttled) ── */
-  function scrollLoop() {
+  /* ── Scroll handler (passive — only updates target) ── */
+  function onScroll() {
     const scrollY = window.pageYOffset | 0;
 
-    if (scrollY !== lastScrollY) {
-      lastScrollY = scrollY;
-
-      /* Hide scroll prompt on first scroll */
-      if (!hasScrolled && scrollY > 10) {
-        hasScrolled = true;
-        scrollPrompt.classList.add('is-fading');
-        setTimeout(() => scrollPrompt.classList.remove('is-visible', 'is-fading'), 500);
-      }
-
-      /* Frame index from scroll */
-      const rawFrame = scrollY / PX_PER_FRAME;
-      const frameIndex = Math.min(Math.max(rawFrame | 0, 0), TOTAL_FRAMES - 1);
-
-      drawFrame(frameIndex);
-      updateOverlays(frameIndex);
-
-      /* Progress bar */
-      const videoProgress = Math.min(scrollY / videoScrollDist, 1);
-      progressFill.style.width = (videoProgress * 100) + '%';
-
-      /* Transition: video → content */
-      if (scrollY >= videoScrollDist) {
-        canvasStage.style.opacity = '0';
-        textOverlayContainer.style.opacity = '0';
-        progressTrack.classList.remove('is-visible');
-      } else {
-        canvasStage.style.opacity = '1';
-        textOverlayContainer.style.opacity = '1';
-        if (isReady) progressTrack.classList.add('is-visible');
-      }
+    /* Hide scroll prompt on first scroll */
+    if (!hasScrolled && scrollY > 10) {
+      hasScrolled = true;
+      scrollPrompt.classList.add('is-fading');
+      setTimeout(() => scrollPrompt.classList.remove('is-visible', 'is-fading'), 500);
     }
 
-    rafId = requestAnimationFrame(scrollLoop);
+    /* Update target — the animation loop will glide toward it */
+    const rawFrame = scrollY / PX_PER_FRAME;
+    targetFrame = Math.min(Math.max(rawFrame, 0), TOTAL_FRAMES - 1);
+
+    /* Progress bar updates instantly for responsiveness */
+    const videoProgress = Math.min(scrollY / videoScrollDist, 1);
+    progressFill.style.width = (videoProgress * 100) + '%';
+
+    /* Transition: video → content */
+    if (scrollY >= videoScrollDist) {
+      canvasStage.style.opacity = '0';
+      textOverlayContainer.style.opacity = '0';
+      progressTrack.classList.remove('is-visible');
+    } else {
+      canvasStage.style.opacity = '1';
+      textOverlayContainer.style.opacity = '1';
+      if (isReady) progressTrack.classList.add('is-visible');
+    }
+  }
+
+  /* ── Animation loop (continuous lerp toward target) ── */
+  /* Damping factor: 0.08 = silky glide, 0.12 = snappier, 0.05 = heavy inertia */
+  const DAMPING = 0.08;
+
+  function animate() {
+    const diff = targetFrame - smoothFrame;
+
+    /* Only redraw when there's meaningful movement (> 1/100th of a frame) */
+    if (Math.abs(diff) > 0.01) {
+      smoothFrame += diff * DAMPING;
+
+      /* Snap to target when extremely close to avoid infinite micro-drifts */
+      if (Math.abs(targetFrame - smoothFrame) < 0.05) smoothFrame = targetFrame;
+
+      const frameIndex = Math.min(Math.round(smoothFrame) | 0, TOTAL_FRAMES - 1);
+      drawFrame(frameIndex);
+      updateOverlays(frameIndex);
+    }
+
+    rafId = requestAnimationFrame(animate);
   }
 
   /* ── Section reveals (IntersectionObserver) ── */
@@ -230,7 +245,10 @@
       updateCanvasSize();
       setSpacerHeight();
       currentFrame = -1;
-      lastScrollY = -1;
+      /* Recalculate and snap to avoid drift after resize */
+      const rawFrame = (window.pageYOffset | 0) / PX_PER_FRAME;
+      targetFrame = Math.min(Math.max(rawFrame, 0), TOTAL_FRAMES - 1);
+      smoothFrame = targetFrame;
     }, 150);
   }
 
@@ -239,7 +257,7 @@
     if (document.hidden) {
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     } else {
-      if (isReady && !rafId) rafId = requestAnimationFrame(scrollLoop);
+      if (isReady && !rafId) rafId = requestAnimationFrame(animate);
     }
   });
 
@@ -264,7 +282,8 @@
       scrollPrompt.classList.add('is-visible');
       progressTrack.classList.add('is-visible');
 
-      rafId = requestAnimationFrame(scrollLoop);
+      window.addEventListener('scroll', onScroll, { passive: true });
+      rafId = requestAnimationFrame(animate);
       window.addEventListener('resize', onResize);
     }, 350);
 
