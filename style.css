@@ -280,6 +280,30 @@ body { background: var(--color-paper); }
   color: var(--color-ink-3);
 }
 
+/* Sound toggle — opt-in, muted by default */
+.sound-toggle {
+  background: none;
+  border: 1px solid var(--color-ink-3);
+  color: var(--color-ink-3);
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0; flex-shrink: 0;
+  margin-left: auto;
+  border-radius: 0;
+  transition: color 0.3s var(--ease-out), border-color 0.3s var(--ease-out);
+}
+.sound-toggle:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.sound-toggle.is-on {
+  color: var(--color-accent);
+  border-color: var(--color-accent-mid);
+}
+.sound-toggle .sound-wave { display: none; }
+.sound-toggle.is-on .sound-x { display: none; }
+.sound-toggle.is-on .sound-wave { display: inline; }
+
 /* ═══════════════════════════
    BOTTOM PROGRESS
    ═══════════════════════════ */
