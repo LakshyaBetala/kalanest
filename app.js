@@ -166,143 +166,93 @@
   }
 
   /* ═══════════════════════════════════════════════════
-     SOUND ENGINE — Web Audio API, fully procedural
-     Synthesises: ambient drone, water flow + drips,
-     clock ticks, transition chimes. Zero audio files.
-     Sound zones mapped to desktop frame space.
+     SOUND ENGINE — Synchronized Video Audio Scrubbing
+     Loads the extracted audio tracks of the videos
+     and scrubs them frame-by-frame in sync with scroll.
      ═══════════════════════════════════════════════════ */
   const sound = {
-    ctx: null, master: null, enabled: false,
-    drone: null, water: null, noiseBuffer: null,
-    lastFrame: -1, lastTick: -1,
+    enabled: false,
+    audio1: null,
+    audio2: null,
+    lastScrollTime: 0,
 
-    /* — Initialise AudioContext (must follow user gesture) — */
+    /* — Initialise Audio Elements — */
     init() {
-      if (this.ctx) return;
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = 0.8;
-      this.master.connect(this.ctx.destination);
+      if (this.audio1) return;
 
-      /* Pre-generate reusable noise buffer (2 s) */
-      const len = this.ctx.sampleRate * 2;
-      this.noiseBuffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-      const d = this.noiseBuffer.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const path1 = useMobileFrames
+        ? 'public/audio/first_scene_mobile.mp3'
+        : 'public/audio/first_scene.mp3';
+      const path2 = useMobileFrames
+        ? 'public/audio/second_scene_mobile.mp3'
+        : 'public/audio/second_scene.mp3';
 
-      this._startDrone();
-      this._startWater();
-    },
+      this.audio1 = new Audio(path1);
+      this.audio2 = new Audio(path2);
 
-    /* — Warm ambient drone (two detuned sines + triangle, ≈80-170 Hz) — */
-    _startDrone() {
-      const c = this.ctx;
-      const o1 = c.createOscillator(); o1.type = 'sine';     o1.frequency.value = 85;
-      const o2 = c.createOscillator(); o2.type = 'sine';     o2.frequency.value = 128;
-      const o3 = c.createOscillator(); o3.type = 'triangle'; o3.frequency.value = 170;
-      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 200;
-      const g  = c.createGain(); g.gain.value = 0;
-      o1.connect(lp); o2.connect(lp); o3.connect(lp);
-      lp.connect(g); g.connect(this.master);
-      o1.start(); o2.start(); o3.start();
-      this.drone = { g };
-    },
-
-    /* — Continuous water ambience (band-passed looping noise) — */
-    _startWater() {
-      const c = this.ctx;
-      const src = c.createBufferSource();
-      src.buffer = this.noiseBuffer; src.loop = true;
-      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 600; bp.Q.value = 1.5;
-      const lp = c.createBiquadFilter(); lp.type = 'lowpass';  lp.frequency.value = 1200;
-      const g  = c.createGain(); g.gain.value = 0;
-      src.connect(bp); bp.connect(lp); lp.connect(g); g.connect(this.master);
-      src.start();
-      this.water = { g };
-    },
-
-    /* — Single water drip (short filtered noise burst) — */
-    _drip() {
-      const c = this.ctx, now = c.currentTime;
-      const len = (c.sampleRate * 0.06) | 0;
-      const buf = c.createBuffer(1, len, c.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-      const src = c.createBufferSource(); src.buffer = buf;
-      const bp = c.createBiquadFilter(); bp.type = 'bandpass';
-      bp.frequency.value = 800 + Math.random() * 600; bp.Q.value = 12;
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.18, now);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-      src.connect(bp); bp.connect(g); g.connect(this.master);
-      src.start(); src.stop(now + 0.07);
-    },
-
-    /* — Clock tick (metallic sine impulse + soft secondary click) — */
-    _tick() {
-      const c = this.ctx, now = c.currentTime;
-      const o = c.createOscillator(); o.frequency.value = 1800 + Math.random() * 400; o.type = 'sine';
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.22, now);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
-      o.connect(g); g.connect(this.master);
-      o.start(); o.stop(now + 0.04);
-      /* Secondary click for realism */
-      const o2 = c.createOscillator(); o2.frequency.value = 3200;
-      const g2 = c.createGain();
-      g2.gain.setValueAtTime(0.08, now + 0.008);
-      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
-      o2.connect(g2); g2.connect(this.master);
-      o2.start(now + 0.008); o2.stop(now + 0.04);
-    },
-
-    /* — Soft chime (on text overlay transitions) — */
-    _chime() {
-      const c = this.ctx, now = c.currentTime;
-      const freq = [523, 659, 784, 880][(Math.random() * 4) | 0]; /* C5-A5 */
-      const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.12, now);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-      o.connect(g); g.connect(this.master);
-      o.start(); o.stop(now + 0.55);
+      this.audio1.preload = 'auto';
+      this.audio2.preload = 'auto';
+      
+      this.audio1.volume = 0;
+      this.audio2.volume = 0;
     },
 
     /* — Per-frame update (called from animate loop) — */
     update(frameIndex) {
-      if (!this.enabled || !this.ctx) return;
+      if (!this.enabled || !this.audio1 || !this.audio2) return;
 
-      /* Map to desktop frame space so sound zones are consistent */
-      const f = useMobileFrames ? Math.round(frameIndex * OVERLAY_RATIO) : frameIndex;
-      const now = this.ctx.currentTime;
-      const frameChanged = f !== this.lastFrame;
+      const splitFrame = useMobileFrames ? 276 : 240;
+      const fps = useMobileFrames ? 30 : 24;
 
-      /* ---- Continuous ambience (runs even when not scrolling) ---- */
-
-      /* Drone: warm room presence throughout the video */
-      if (this.drone) {
-        this.drone.g.gain.setTargetAtTime(f < 462 ? 0.08 : 0, now, 0.4);
+      let active, inactive, t;
+      if (frameIndex < splitFrame) {
+        active = this.audio1;
+        inactive = this.audio2;
+        t = frameIndex / fps;
+      } else {
+        active = this.audio2;
+        inactive = this.audio1;
+        t = (frameIndex - splitFrame) / fps;
       }
 
-      /* Water zone: desktop frames ~260-420 (curated interiors / water features) */
-      const inWater = f >= 260 && f <= 420;
-      if (this.water) {
-        this.water.g.gain.setTargetAtTime(inWater ? 0.12 : 0, now, 0.6);
+      // Ensure inactive is silent/paused
+      if (!inactive.paused) {
+        inactive.volume = 0;
+        inactive.pause();
       }
-      /* Random drips continue even when scrolling stops */
-      if (inWater && Math.random() < 0.012) this._drip();
 
-      if (!frameChanged) return;
-      this.lastFrame = f;
+      // Check if user is actively scrolling (within last 300ms)
+      const isScrolling = (Date.now() - this.lastScrollTime) < 300;
 
-      /* ---- Event sounds (only fire on frame changes) ---- */
+      if (isScrolling) {
+        if (active.paused) {
+          active.play().catch(() => {});
+        }
 
-      /* Clock zone: desktop frames ~100-210 (heritage timepieces) */
-      if (f >= 100 && f <= 210) {
-        const bucket = (f / 18) | 0;  /* tick every ~18 frames */
-        if (bucket !== this.lastTick) {
-          this.lastTick = bucket;
-          this._tick();
+        // Calculate drift between target time and current audio time
+        const drift = t - active.currentTime;
+
+        if (Math.abs(drift) > 0.4) {
+          // Large jump or backward scroll: seek directly
+          active.currentTime = Math.max(0, Math.min(t, active.duration || 10));
+          active.playbackRate = 1.0;
+        } else {
+          // Adjust playback rate to catch up or slow down
+          let rate = 1.0 + (drift * 2.5);
+          rate = Math.max(0.5, Math.min(rate, 2.0)); // Clamp rate
+          active.playbackRate = rate;
+        }
+
+        // Fade in volume
+        if (active.volume < 0.8) {
+          active.volume = Math.min(0.8, active.volume + 0.05);
+        }
+      } else {
+        // Not scrolling: fade out volume, then pause
+        if (active.volume > 0) {
+          active.volume = Math.max(0, active.volume - 0.08);
+        } else if (!active.paused) {
+          active.pause();
         }
       }
     },
@@ -319,18 +269,9 @@
           soundBtn.setAttribute('aria-label', 'Mute sound');
         }
 
-        const runInitVolume = () => {
-          if (!this.enabled) return;
-          this.master.gain.setTargetAtTime(0.8, this.ctx.currentTime, 0.15);
-          this.update(Math.round(smoothFrame));
-          this._chime();
-        };
-
-        if (this.ctx.state === 'suspended') {
-          this.ctx.resume().then(runInitVolume);
-        } else {
-          runInitVolume();
-        }
+        // Trigger immediate sound update
+        this.lastScrollTime = Date.now();
+        this.update(Math.round(smoothFrame));
       } else {
         this.enabled = false;
         
@@ -339,13 +280,13 @@
           soundBtn.setAttribute('aria-label', 'Enable sound');
         }
 
-        if (this.ctx) {
-          this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.15);
-          setTimeout(() => {
-            if (!this.enabled && this.ctx && this.ctx.state === 'running') {
-              this.ctx.suspend();
-            }
-          }, 200);
+        if (this.audio1) {
+          this.audio1.volume = 0;
+          this.audio1.pause();
+        }
+        if (this.audio2) {
+          this.audio2.volume = 0;
+          this.audio2.pause();
         }
       }
     }
@@ -365,6 +306,8 @@
     /* Update target — the animation loop will glide toward it */
     const rawFrame = scrollY / PX_PER_FRAME;
     targetFrame = Math.min(Math.max(rawFrame, 0), TOTAL_FRAMES - 1);
+
+    sound.lastScrollTime = Date.now();
 
     /* Progress bar updates instantly for responsiveness */
     const videoProgress = Math.min(scrollY / videoScrollDist, 1);
@@ -399,8 +342,10 @@
       const frameIndex = Math.min(Math.round(smoothFrame) | 0, TOTAL_FRAMES - 1);
       drawFrame(frameIndex);
       updateOverlays(frameIndex);
-      sound.update(frameIndex);
     }
+
+    const currentFrameIndex = Math.min(Math.round(smoothFrame) | 0, TOTAL_FRAMES - 1);
+    sound.update(currentFrameIndex);
 
     rafId = requestAnimationFrame(animate);
   }
