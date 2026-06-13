@@ -172,87 +172,106 @@
      ═══════════════════════════════════════════════════ */
   const sound = {
     enabled: false,
-    audio1: null,
-    audio2: null,
-    lastScrollTime: 0,
+    bgAudio: null,
+    clockAudio: null,
+    waterAudio: null,
+    pageTurnAudio: null,
+    lastPastSplit: false,
+    lastTransitionTime: 0,
 
     /* — Initialise Audio Elements — */
     init() {
-      if (this.audio1) return;
+      if (this.bgAudio) return;
 
-      const path1 = useMobileFrames
-        ? 'public/audio/first_scene_mobile.mp3'
-        : 'public/audio/first_scene.mp3';
-      const path2 = useMobileFrames
-        ? 'public/audio/second_scene_mobile.mp3'
-        : 'public/audio/second_scene.mp3';
+      const bgPath = useMobileFrames ? 'public/audio/bg_mobile.mp3' : 'public/audio/bg_desktop.mp3';
+      const clockPath = useMobileFrames ? 'public/audio/clock_sfx_mobile.mp3' : 'public/audio/clock_sfx.mp3';
+      const waterPath = useMobileFrames ? 'public/audio/water_sfx_mobile.mp3' : 'public/audio/water_sfx.mp3';
+      const pageTurnPath = useMobileFrames ? 'public/audio/page_turn_sfx_mobile.mp3' : 'public/audio/page_turn_sfx.mp3';
 
-      this.audio1 = new Audio(path1);
-      this.audio2 = new Audio(path2);
+      this.bgAudio = new Audio(bgPath);
+      this.clockAudio = new Audio(clockPath);
+      this.waterAudio = new Audio(waterPath);
+      this.pageTurnAudio = new Audio(pageTurnPath);
 
-      this.audio1.preload = 'auto';
-      this.audio2.preload = 'auto';
-      
-      this.audio1.volume = 0;
-      this.audio2.volume = 0;
+      this.bgAudio.preload = 'auto';
+      this.clockAudio.preload = 'auto';
+      this.waterAudio.preload = 'auto';
+      this.pageTurnAudio.preload = 'auto';
+
+      this.bgAudio.loop = true;
+      this.clockAudio.loop = true;
+      this.waterAudio.loop = true;
+      this.pageTurnAudio.loop = false;
+
+      this.bgAudio.volume = 0;
+      this.clockAudio.volume = 0;
+      this.waterAudio.volume = 0;
+      this.pageTurnAudio.volume = 0;
     },
 
     /* — Per-frame update (called from animate loop) — */
     update(frameIndex) {
-      if (!this.enabled || !this.audio1 || !this.audio2) return;
+      if (!this.enabled || !this.bgAudio) return;
+
+      // Ensure background is playing at steady volume
+      if (this.bgAudio.paused) {
+        this.bgAudio.play().catch(() => {});
+      }
+      // Smoothly target background volume
+      if (this.bgAudio.volume < 0.35) {
+        this.bgAudio.volume = Math.min(0.35, this.bgAudio.volume + 0.05);
+      }
 
       const splitFrame = useMobileFrames ? 276 : 240;
-      const fps = useMobileFrames ? 30 : 24;
 
-      let active, inactive, t;
-      if (frameIndex < splitFrame) {
-        active = this.audio1;
-        inactive = this.audio2;
-        t = frameIndex / fps;
+      // ─── 1. Clock SFX Zone ───
+      // Active in frames 100 to 210
+      if (frameIndex >= 100 && frameIndex <= 210) {
+        const center = 155;
+        const radius = 55;
+        const dist = Math.abs(frameIndex - center);
+        const volCoeff = Math.max(0, 1 - dist / radius);
+
+        if (this.clockAudio.paused) {
+          this.clockAudio.play().catch(() => {});
+        }
+        this.clockAudio.volume = volCoeff * 0.7; // Max volume 0.7
       } else {
-        active = this.audio2;
-        inactive = this.audio1;
-        t = (frameIndex - splitFrame) / fps;
+        if (!this.clockAudio.paused) {
+          this.clockAudio.volume = 0;
+          this.clockAudio.pause();
+        }
       }
 
-      // Ensure inactive is silent/paused
-      if (!inactive.paused) {
-        inactive.volume = 0;
-        inactive.pause();
+      // ─── 2. Water Statue SFX Zone ───
+      // Active in frames 260 to 420
+      if (frameIndex >= 260 && frameIndex <= 420) {
+        const center = 340;
+        const radius = 80;
+        const dist = Math.abs(frameIndex - center);
+        const volCoeff = Math.max(0, 1 - dist / radius);
+
+        if (this.waterAudio.paused) {
+          this.waterAudio.play().catch(() => {});
+        }
+        this.waterAudio.volume = volCoeff * 0.8; // Max volume 0.8
+      } else {
+        if (!this.waterAudio.paused) {
+          this.waterAudio.volume = 0;
+          this.waterAudio.pause();
+        }
       }
 
-      // Check if user is actively scrolling (within last 300ms)
-      const isScrolling = (Date.now() - this.lastScrollTime) < 300;
-
-      if (isScrolling) {
-        if (active.paused) {
-          active.play().catch(() => {});
-        }
-
-        // Calculate drift between target time and current audio time
-        const drift = t - active.currentTime;
-
-        if (Math.abs(drift) > 0.4) {
-          // Large jump or backward scroll: seek directly
-          active.currentTime = Math.max(0, Math.min(t, active.duration || 10));
-          active.playbackRate = 1.0;
-        } else {
-          // Adjust playback rate to catch up or slow down
-          let rate = 1.0 + (drift * 2.5);
-          rate = Math.max(0.5, Math.min(rate, 2.0)); // Clamp rate
-          active.playbackRate = rate;
-        }
-
-        // Fade in volume
-        if (active.volume < 0.8) {
-          active.volume = Math.min(0.8, active.volume + 0.05);
-        }
-      } else {
-        // Not scrolling: fade out volume, then pause
-        if (active.volume > 0) {
-          active.volume = Math.max(0, active.volume - 0.08);
-        } else if (!active.paused) {
-          active.pause();
+      // ─── 3. Page Turn SFX (Transition) ───
+      const isPastSplit = frameIndex >= splitFrame;
+      if (isPastSplit !== this.lastPastSplit) {
+        this.lastPastSplit = isPastSplit;
+        const now = Date.now();
+        if (now - this.lastTransitionTime > 1500) {
+          this.lastTransitionTime = now;
+          this.pageTurnAudio.currentTime = 0;
+          this.pageTurnAudio.volume = 0.55;
+          this.pageTurnAudio.play().catch(() => {});
         }
       }
     },
@@ -269,8 +288,11 @@
           soundBtn.setAttribute('aria-label', 'Mute sound');
         }
 
+        // Initialize state so transition doesn't fire immediately on load
+        this.lastPastSplit = Math.round(smoothFrame) >= (useMobileFrames ? 276 : 240);
+        this.lastTransitionTime = Date.now();
+
         // Trigger immediate sound update
-        this.lastScrollTime = Date.now();
         this.update(Math.round(smoothFrame));
       } else {
         this.enabled = false;
@@ -280,14 +302,14 @@
           soundBtn.setAttribute('aria-label', 'Enable sound');
         }
 
-        if (this.audio1) {
-          this.audio1.volume = 0;
-          this.audio1.pause();
-        }
-        if (this.audio2) {
-          this.audio2.volume = 0;
-          this.audio2.pause();
-        }
+        // Mute and pause all audio elements
+        const audios = [this.bgAudio, this.clockAudio, this.waterAudio, this.pageTurnAudio];
+        audios.forEach((audio) => {
+          if (audio) {
+            audio.volume = 0;
+            audio.pause();
+          }
+        });
       }
     }
   };
